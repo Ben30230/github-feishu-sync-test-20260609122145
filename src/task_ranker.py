@@ -44,6 +44,16 @@ def select_plan(tasks: Iterable[Task], max_effort: int) -> list[Task]:
     return plan
 
 
+def plan_summary(tasks: Iterable[Task], max_effort: int) -> dict[str, Any]:
+    plan = select_plan(tasks, max_effort)
+    used_effort = sum(task.effort for task in plan)
+    return {
+        "selected": [task.name for task in plan],
+        "used_effort": used_effort,
+        "remaining_effort": max_effort - used_effort,
+    }
+
+
 def task_to_mapping(task: Task) -> dict[str, Any]:
     return {
         "name": task.name,

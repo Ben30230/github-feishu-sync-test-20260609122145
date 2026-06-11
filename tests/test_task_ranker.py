@@ -3,7 +3,7 @@ import subprocess
 import sys
 import unittest
 
-from src.task_ranker import Task, rank_tasks, select_plan, task_from_mapping
+from src.task_ranker import Task, plan_summary, rank_tasks, select_plan, task_from_mapping
 
 
 class TaskRankerTests(unittest.TestCase):
@@ -38,6 +38,19 @@ class TaskRankerTests(unittest.TestCase):
 
         self.assertEqual([item.name for item in plan], ["Fix webhook retry", "Polish docs"])
         self.assertLessEqual(sum(item.effort for item in plan), 5)
+
+    def test_plan_summary_reports_selected_effort_and_remaining_budget(self):
+        tasks = [
+            Task(name="Large launch", impact=5, urgency=5, effort=8),
+            Task(name="Fix webhook retry", impact=4, urgency=5, effort=3),
+            Task(name="Polish docs", impact=3, urgency=2, effort=2),
+        ]
+
+        summary = plan_summary(tasks, max_effort=6)
+
+        self.assertEqual(summary["selected"], ["Fix webhook retry", "Polish docs"])
+        self.assertEqual(summary["used_effort"], 5)
+        self.assertEqual(summary["remaining_effort"], 1)
 
 
 class TaskRankerCliTests(unittest.TestCase):
