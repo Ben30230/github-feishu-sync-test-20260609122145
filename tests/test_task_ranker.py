@@ -3,7 +3,7 @@ import subprocess
 import sys
 import unittest
 
-from src.task_ranker import Task, rank_tasks, task_from_mapping
+from src.task_ranker import Task, rank_tasks, select_plan, task_from_mapping
 
 
 class TaskRankerTests(unittest.TestCase):
@@ -27,6 +27,18 @@ class TaskRankerTests(unittest.TestCase):
         self.assertEqual(task.urgency, 1)
         self.assertEqual(task.effort, 1)
 
+    def test_select_plan_respects_effort_budget_after_ranking(self):
+        tasks = [
+            Task(name="Large launch", impact=5, urgency=5, effort=8),
+            Task(name="Fix webhook retry", impact=4, urgency=5, effort=3),
+            Task(name="Polish docs", impact=3, urgency=2, effort=2),
+        ]
+
+        plan = select_plan(tasks, max_effort=5)
+
+        self.assertEqual([item.name for item in plan], ["Fix webhook retry", "Polish docs"])
+        self.assertLessEqual(sum(item.effort for item in plan), 5)
+
 
 class TaskRankerCliTests(unittest.TestCase):
     def test_cli_outputs_ranked_json(self):
@@ -47,6 +59,25 @@ class TaskRankerCliTests(unittest.TestCase):
         ranked = json.loads(result.stdout)
         self.assertEqual(ranked[0]["name"], "Ship sync status")
         self.assertIn("score", ranked[0])
+
+    def test_cli_budget_outputs_selected_plan(self):
+        payload = json.dumps(
+            [
+                {"name": "Large launch", "impact": 5, "urgency": 5, "effort": 8},
+                {"name": "Fix webhook retry", "impact": 4, "urgency": 5, "effort": 3},
+                {"name": "Polish docs", "impact": 3, "urgency": 2, "effort": 2},
+            ]
+        )
+
+        result = subprocess.run(
+            [sys.executable, "-m", "src.task_ranker", payload, "--budget", "5"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        ranked = json.loads(result.stdout)
+        self.assertEqual([item["name"] for item in ranked], ["Fix webhook retry", "Polish docs"])
 
 
 if __name__ == "__main__":
